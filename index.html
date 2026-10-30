@@ -125,13 +125,10 @@
     }
 
     .grid {
+      position: relative;
       list-style: none;
       margin: 0;
       padding: 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 28px 22px;
-      align-items: start;
     }
 
     .card {
@@ -198,6 +195,14 @@
       max-height: 440px;
       width: auto;
       object-fit: contain;
+    }
+
+    .grid .frame { min-height: 0; }
+
+    .grid .frame img {
+      width: 100%;
+      height: auto;
+      max-height: none;
     }
 
     .fresh {
@@ -1175,6 +1180,7 @@
         var image = document.createElement("img");
         image.src = pet.photo;
         image.alt = pet.name + ". " + pet.caption;
+        image.addEventListener("load", scheduleMasonry);
         frame.appendChild(image);
         button.appendChild(frame);
 
@@ -1206,6 +1212,46 @@
         item.appendChild(button);
         gallery.appendChild(item);
       });
+      scheduleMasonry();
+    }
+
+    var masonryTimer = 0;
+
+    function scheduleMasonry() {
+      clearTimeout(masonryTimer);
+      masonryTimer = setTimeout(layoutMasonry, 40);
+    }
+
+    function layoutMasonry() {
+      var gallery = $("gallery");
+      var width = gallery.clientWidth;
+      if (!width) return;
+      var gap = 22;
+      var minCol = 280;
+      var columns = Math.max(1, Math.floor((width + gap) / (minCol + gap)));
+      var colWidth = (width - gap * (columns - 1)) / columns;
+      var heights = [];
+      var column;
+      for (column = 0; column < columns; column++) heights.push(0);
+      var cards = gallery.children;
+      var index;
+      for (index = 0; index < cards.length; index++) {
+        var card = cards[index];
+        card.style.position = "absolute";
+        card.style.width = colWidth + "px";
+        var shortest = 0;
+        for (column = 1; column < columns; column++) {
+          if (heights[column] < heights[shortest]) shortest = column;
+        }
+        card.style.left = (shortest * (colWidth + gap)) + "px";
+        card.style.top = heights[shortest] + "px";
+        heights[shortest] += card.offsetHeight + gap;
+      }
+      var maxHeight = 0;
+      for (column = 0; column < heights.length; column++) {
+        if (heights[column] > maxHeight) maxHeight = heights[column];
+      }
+      gallery.style.height = (maxHeight > 0 ? maxHeight - gap : 0) + "px";
     }
 
 
@@ -1387,6 +1433,7 @@
     }
 
     function bind() {
+      window.addEventListener("resize", scheduleMasonry);
       $("curtain").addEventListener("click", openCurtain);
       $("curtain").addEventListener("keydown", function (event) {
         if (event.key === "Enter") openCurtain();
